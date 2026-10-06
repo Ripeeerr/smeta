@@ -25,10 +25,12 @@ class SessionView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return Response({
-            "user": user_data(request.user) if request.user.is_authenticated else None,
-            "csrf_token": get_token(request),
-        })
+        return Response(
+            {
+                "user": user_data(request.user) if request.user.is_authenticated else None,
+                "csrf_token": get_token(request),
+            }
+        )
 
 
 class LoginInput(serializers.Serializer):
@@ -47,7 +49,9 @@ class LoginView(APIView):
         data.is_valid(raise_exception=True)
         user = authenticate(request, **data.validated_data)
         if user is None:
-            return Response({"detail": "Неверный логин или пароль."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Неверный логин или пароль."}, status=status.HTTP_400_BAD_REQUEST
+            )
         login(request, user)
         return Response({"user": user_data(user), "csrf_token": get_token(request)})
 
