@@ -61,8 +61,11 @@ export function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
     document.title = "Смета — закупки под контролем";
-    const target = document.querySelector<HTMLElement>('h1, main');
-    if (target && !document.querySelector('dialog[open]')) { target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: true }); }
+    const target = document.querySelector<HTMLElement>("h1, main");
+    if (target && !document.querySelector("dialog[open]")) {
+      target.setAttribute("tabindex", "-1");
+      target.focus({ preventScroll: true });
+    }
   }, [location.pathname]);
   return (
     <ErrorBoundary key={location.pathname}>

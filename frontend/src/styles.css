@@ -2228,6 +2228,10 @@ dd {
   }
 }
 
+@media (max-width: 1000px) {
+  .budget-departments { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 760px) {
   :root {
     font-size: 16px;
