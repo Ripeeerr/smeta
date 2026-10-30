@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 
 import pytest
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -35,7 +35,7 @@ def test_simultaneous_approvals_cannot_spend_same_remaining_budget(workspace):
         except ValidationError:
             return "insufficient"
         finally:
-            close_old_connections()
+            connections.close_all()
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         results = list(executor.map(approve, requests))
