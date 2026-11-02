@@ -469,7 +469,7 @@ export function RequestDetail() {
               <>
                 <label>
                   Поставщик
-                    <select name="supplier" required aria-label="Поставщик">
+                  <select name="supplier" required aria-label="Поставщик">
                     <option value="">Выберите поставщика</option>
                     {suppliers.data
                       ?.filter(
@@ -523,7 +523,7 @@ export function RequestDetail() {
                 </p>
                 <label>
                   Предложение
-                    <select name="quote_id" required aria-label="Предложение">
+                  <select name="quote_id" required aria-label="Предложение">
                     <option value="">Выберите предложение</option>
                     {r.quotes.map((q) => (
                       <option

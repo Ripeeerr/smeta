@@ -60,9 +60,22 @@ export function App() {
   const location = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
-    document.title = "Смета — закупки под контролем";
-    const target = document.querySelector<HTMLElement>('h1, main');
-    if (target && !document.querySelector('dialog[open]')) { target.setAttribute('tabindex', '-1'); target.focus({ preventScroll: true }); }
+    const section = location.pathname.split("/")[1];
+    const names: Record<string, string> = {
+      login: "Вход",
+      requests: "Заявки",
+      purchases: "Закупки",
+      suppliers: "Поставщики",
+      budgets: "Бюджеты",
+      settings: "Настройки",
+      help: "Помощь",
+    };
+    document.title = `${names[section] || "Обзор"} — Смета`;
+    const target = document.querySelector<HTMLElement>("h1, main");
+    if (target && !document.querySelector("dialog[open]")) {
+      target.setAttribute("tabindex", "-1");
+      target.focus({ preventScroll: true });
+    }
   }, [location.pathname]);
   return (
     <ErrorBoundary key={location.pathname}>

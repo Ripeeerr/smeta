@@ -96,7 +96,11 @@ export function Modal({
     const el = dialog.current;
     const trigger = document.activeElement;
     el?.showModal();
-    return () => { el?.close(); if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus(); };
+    return () => {
+      el?.close();
+      if (trigger instanceof HTMLElement && trigger.isConnected)
+        trigger.focus();
+    };
   }, []);
   return (
     <dialog
