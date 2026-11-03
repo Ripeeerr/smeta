@@ -1,0 +1,58 @@
+name: Проверки проекта
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'release/**', 'hotfix/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: smeta
+          POSTGRES_PASSWORD: ci-test-password
+          POSTGRES_DB: smeta
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smeta -d smeta"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://smeta:ci-test-password@localhost:5432/smeta
+      E2E_DATABASE_URL: postgresql://smeta:ci-test-password@localhost:5432/smeta_e2e
+      DJANGO_SECRET_KEY: ci-ephemeral-test-key-not-for-deployment
+      DJANGO_DEBUG: '1'
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      DEMO_PASSWORD: ci-only-demo-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.13.7'
+          enable-cache: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.4'
+      - run: uv sync --frozen
+        working-directory: backend
+      - run: uv run ruff check . && uv run ruff format --check .
+        working-directory: backend
+      - run: uv run manage.py makemigrations --check --dry-run && uv run pytest -q
+        working-directory: backend
+      - run: bun install --frozen-lockfile
+        working-directory: frontend
+      - run: bun run format:check && bun run build && bun run test
+        working-directory: frontend
+      - run: bunx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: psql "$DATABASE_URL" -c 'CREATE DATABASE smeta_e2e;'
+      - run: bun run test:e2e
+        working-directory: frontend
