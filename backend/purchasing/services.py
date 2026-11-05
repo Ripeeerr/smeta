@@ -1,12 +1,13 @@
 from decimal import Decimal
+from pathlib import Path
 
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from accounts.models import User
+from accounts.models import Department, User
 
-from .models import Budget, Event, Purchase, Quote, Requisition, RequisitionItem
+from .models import Attachment, Budget, Event, Purchase, Quote, Requisition, RequisitionItem
 from .permissions import require_approver, require_author, require_role
 
 
@@ -25,6 +26,34 @@ def locked_requisition(pk):
 
 def editable(requisition):
     ensure_status(requisition, Requisition.Status.DRAFT, Requisition.Status.RETURNED)
+
+
+@transaction.atomic
+def add_attachment(pk, actor, file):
+    req = locked_requisition(pk)
+    require_author(actor, req)
+    editable(req)
+    if not file or not 0 < file.size <= 10 * 1024 * 1024:
+        raise ValidationError("Выберите непустой файл размером до 10 МБ.")
+    if req.attachments.count() >= 5:
+        raise ValidationError("К заявке можно приложить до пяти файлов.")
+    name = Path(file.name.replace("\\", "/")).name
+    extension = Path(name).suffix.lower()
+    signatures = {
+        ".pdf": (b"%PDF-",),
+        ".png": (b"\x89PNG\r\n\x1a\n",),
+        ".jpg": (b"\xff\xd8\xff",),
+        ".jpeg": (b"\xff\xd8\xff",),
+    }
+    header = file.read(8)
+    file.seek(0)
+    if extension not in signatures or not any(
+        header.startswith(signature) for signature in signatures[extension]
+    ):
+        raise ValidationError("Тип файла не соответствует PDF, PNG или JPEG.")
+    return Attachment.objects.create(
+        requisition=req, uploaded_by=actor, original_name=name[:180], size=file.size, file=file
+    )
 
 
 @transaction.atomic
@@ -188,6 +217,7 @@ def receive(pk, actor, items):
 @transaction.atomic
 def set_budget(actor, data):
     require_role(actor, User.Role.ADMIN)
+    Department.objects.select_for_update().get(pk=data["department"].pk)
     budget = (
         Budget.objects.select_for_update()
         .filter(department=data["department"], month=data["month"])

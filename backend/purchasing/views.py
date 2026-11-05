@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 from django.db import connection
 from django.db.models import Sum
@@ -18,7 +17,7 @@ from accounts.models import Department, User
 
 from . import services
 from .models import Attachment, Budget, Event, Requisition, Supplier
-from .permissions import require_author, require_role, visible_requisitions
+from .permissions import require_role, visible_requisitions
 from .serializers import (
     AttachmentSerializer,
     BudgetSerializer,
@@ -160,23 +159,10 @@ class RequisitionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], parser_classes=[MultiPartParser, FormParser])
     def attachments(self, request, pk=None):
         req = self.get_object()
-        require_author(request.user, req)
-        services.editable(req)
         file = request.FILES.get("file")
-        if not file or file.size > 10 * 1024 * 1024:
+        if getattr(request._request, "upload_limit_exceeded", False):
             raise ValidationError("Выберите файл размером до 10 МБ.")
-        if req.attachments.count() >= 5:
-            raise ValidationError("К заявке можно приложить до пяти файлов.")
-        name = Path(file.name.replace("\\", "/")).name
-        if Path(name).suffix.lower() not in (".pdf", ".png", ".jpg", ".jpeg"):
-            raise ValidationError("Поддерживаются PDF, PNG и JPEG.")
-        attachment = Attachment.objects.create(
-            requisition=req,
-            uploaded_by=request.user,
-            original_name=name[:180],
-            size=file.size,
-            file=file,
-        )
+        attachment = services.add_attachment(req.pk, request.user, file)
         return Response(AttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["post"])
