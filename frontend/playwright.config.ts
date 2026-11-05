@@ -12,6 +12,8 @@ const sharedEnv: Record<string, string> = {
   DJANGO_ALLOWED_HOSTS: 'localhost,127.0.0.1',
   CSRF_TRUSTED_ORIGINS: 'http://127.0.0.1:5174',
   DEMO_PASSWORD: env.DEMO_PASSWORD || '',
+  DEMO_DIRECTOR_FIRST_NAME: env.DEMO_DIRECTOR_FIRST_NAME || 'Руководитель',
+  DEMO_DIRECTOR_LAST_NAME: env.DEMO_DIRECTOR_LAST_NAME || '',
 }
 process.env.DEMO_PASSWORD = sharedEnv.DEMO_PASSWORD
 export default defineConfig({
