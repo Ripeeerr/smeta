@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from purchasing import services
+from purchasing.models import Budget
 
 
 @pytest.mark.django_db(transaction=True)
@@ -43,3 +44,56 @@ def test_simultaneous_approvals_cannot_spend_same_remaining_budget(workspace):
     w["budget"].refresh_from_db()
     assert w["budget"].reserved == 700
     assert w["budget"].available == 300
+
+
+@pytest.mark.django_db(transaction=True)
+def test_simultaneous_budget_creation_is_serialized(workspace):
+    w = workspace
+    month = w["budget"].month
+
+    def create(limit):
+        close_old_connections()
+        try:
+            return services.set_budget(
+                w["admin"], {"department": w["other"], "month": month, "limit": Decimal(limit)}
+            ).pk
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        ids = list(executor.map(create, ["1000", "2000"]))
+    assert ids[0] == ids[1]
+    assert Budget.objects.filter(department=w["other"], month=month).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_simultaneous_uploads_cannot_exceed_attachment_count(workspace, settings, tmp_path):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from tests.test_workflow import draft
+
+    settings.MEDIA_ROOT = tmp_path
+    req = draft(workspace)
+    for index in range(4):
+        services.add_attachment(
+            req.pk, workspace["employee"], SimpleUploadedFile(f"file-{index}.pdf", b"%PDF-1.4 test")
+        )
+
+    def upload(index):
+        close_old_connections()
+        try:
+            services.add_attachment(
+                req.pk,
+                workspace["employee"],
+                SimpleUploadedFile(f"upload-{index}.pdf", b"%PDF-1.4 test"),
+            )
+            return "created"
+        except ValidationError:
+            return "limit"
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(upload, [1, 2]))
+    assert sorted(results) == ["created", "limit"]
+    assert req.attachments.count() == 5
