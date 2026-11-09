@@ -22,8 +22,24 @@ class Command(BaseCommand):
         password = os.getenv("DEMO_PASSWORD", "")
         if len(password) < 12:
             raise CommandError("Укажите DEMO_PASSWORD длиной не менее 12 символов.")
-        if User.objects.filter(username="director").exists():
-            self.stdout.write("Демонстрационные данные уже созданы. Существующие записи сохранены.")
+        first_name = os.getenv("DEMO_DIRECTOR_FIRST_NAME", "").strip()
+        last_name = os.getenv("DEMO_DIRECTOR_LAST_NAME", "").strip()
+        if not first_name or any(
+            len(value) > 150 or any(ord(c) < 32 for c in value) for value in (first_name, last_name)
+        ):
+            raise CommandError(
+                "Укажите DEMO_DIRECTOR_FIRST_NAME и при необходимости DEMO_DIRECTOR_LAST_NAME. Максимум 150 символов в каждом поле."
+            )
+        director = User.objects.select_for_update().filter(username="director").first()
+        if director:
+            if director.role != User.Role.ADMIN:
+                raise CommandError("Логин director занят другой учётной записью.")
+            director.first_name = first_name
+            director.last_name = last_name
+            director.save(update_fields=["first_name", "last_name"])
+            self.stdout.write(
+                "Демонстрационные данные уже созданы. Имя руководителя обновлено из окружения, закупки и пароли сохранены."
+            )
             return
         today = timezone.localdate()
         month = today.replace(day=1)
@@ -32,7 +48,7 @@ class Command(BaseCommand):
             for name in ["Продажи", "Администрация", "Бухгалтерия", "ИТ"]
         }
         people = [
-            ("director", "Алексей", "Котов", User.Role.ADMIN, None),
+            ("director", first_name, last_name, User.Role.ADMIN, None),
             ("manager", "Елена", "Маркова", User.Role.MANAGER, "Продажи"),
             ("buyer", "Дмитрий", "Волков", User.Role.BUYER, "Администрация"),
             ("employee", "Мария", "Орлова", User.Role.EMPLOYEE, "Продажи"),

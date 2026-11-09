@@ -80,3 +80,22 @@ test('мобильное пространство не имеет горизон
   await expect(page.getByRole('heading', { name: 'Поставщики', exact: true })).toBeVisible()
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('содержимое заявки и комментария отображается как текст', async ({ page }) => {
+  await login(page, 'employee')
+  const payload = '<img src=x onerror="window.__xss=1">'
+  await page.getByRole('link', { name: 'Создать заявку' }).click()
+  await page.getByLabel('Что нужно закупить').fill(payload)
+  const date = new Date(); date.setDate(date.getDate() + 10)
+  await page.getByLabel('Нужно получить к').fill(date.toISOString().slice(0, 10))
+  await page.getByLabel('Обоснование').fill(payload)
+  await page.getByLabel('Позиция 1', { exact: true }).fill(payload)
+  await page.getByLabel('Цена, ₽', { exact: true }).fill('10')
+  await page.getByRole('button', { name: 'Сохранить черновик' }).click()
+  await expect(page.getByRole('heading', { name: payload, exact: true })).toBeVisible()
+  await page.getByLabel('Комментарий', { exact: true }).fill(payload)
+  await page.getByRole('button', { name: 'Отправить комментарий' }).click()
+  await expect(page.locator('.timeline')).toContainText(payload)
+  expect(await page.evaluate(() => Reflect.get(window, '__xss'))).toBeUndefined()
+  await expect(page.locator('img[src="x"]')).toHaveCount(0)
+})
