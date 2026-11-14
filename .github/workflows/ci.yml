@@ -32,6 +32,8 @@ jobs:
       DJANGO_DEBUG: '1'
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
       DEMO_PASSWORD: ci-only-demo-password
+      DEMO_DIRECTOR_FIRST_NAME: Руководитель
+      DEMO_DIRECTOR_LAST_NAME: Компании
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
